@@ -1,4 +1,3 @@
-//second test
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -20,8 +19,10 @@ struct CSR {
 };
 
 // 从TXT文件中读取边列表并转换为邻接表
-unordered_map<int, vector<int>> readEdgesFromFile(const string& filename) {
-    unordered_map<int, vector<int>> adjList;
+vector<vector<int>> readEdgesFromFile(const string& filename) {
+    //第二个vector要排序，还要去重。
+//    unordered_map<int, vector<int>> adjList(548411);
+    vector<vector<int>>adjList(548411);
     ifstream file(filename);
     string line;
 
@@ -30,23 +31,28 @@ unordered_map<int, vector<int>> readEdgesFromFile(const string& filename) {
         exit(EXIT_FAILURE);
     }
 
-    int u, v;
+    int u = 0, v = 0;
     while (file >> u >> v) {
         adjList[u].push_back(v);
         adjList[v].push_back(u);
     }
 
     file.close();
+    cout<<adjList.size()<<endl;
+
     return adjList;
+
 }
 
 // 将邻接表转换为CSR格式
-CSR convertToCSR(const unordered_map<int, vector<int>>& adjList, int nodeCount) {
+//find部分也要改。
+CSR convertToCSR(const vector<vector<int>>& adjList, int nodeCount) {
     CSR csr;
     csr.rowPointers.push_back(0); // 第一个元素永远是0
 
     for (int i = 0; i < nodeCount; ++i) {
-        if (adjList.find(i) != adjList.end()) {
+//        if (adjList.find(i) != adjList.end()) {
+        if(adjList[i].size()!=0){
             for (int neighbor : adjList.at(i)) {
                 csr.colIndices.push_back(neighbor);
             }
@@ -72,6 +78,7 @@ void printCSR(const CSR& csr) {
     cout << endl;
 }
 // 获取CSR中某个节点的邻居节点集合
+//这个要改成返回指针 uint32_t 首地址，和size
 unordered_set<int> getNeighbors(const CSR& csr, int vertex) {
     unordered_set<int> neighbors;
     int start = csr.rowPointers[vertex];
@@ -83,6 +90,7 @@ unordered_set<int> getNeighbors(const CSR& csr, int vertex) {
 }
 
 // 计算两个集合的交集
+//改成stl库，指针版本
 unordered_set<int> intersect(const unordered_set<int>& set1, const unordered_set<int>& set2) {
     unordered_set<int> result;
     for (int elem : set1) {
@@ -159,7 +167,7 @@ int main() {
     string filename = "/Users/xunuo/Downloads/amazon.txt";
 
     // 从文件中读取边列表并转换为邻接表
-    unordered_map<int, vector<int>> adjList = readEdgesFromFile(filename);
+    vector<vector<int>> adjList = readEdgesFromFile(filename);
 
     // 假设节点编号是连续的，从0开始
     int nodeCount = adjList.size();
