@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <vector>
 #include <unordered_set>
@@ -6,9 +7,43 @@
 #include <algorithm>
 #include <fstream>
 #include <unordered_map>
-
+#include <chrono>
 using namespace std;
+int nodeCount = 0;
 
+class Timer {
+public:
+    Timer() {
+        start_time = std::chrono::high_resolution_clock::now();
+    }
+
+    ~Timer() {
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        std::cout << "Elapsed time: " << duration/1000/1000/60 << " minutes" << std::endl;
+    }
+
+private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+};
+
+void updateNodeCount(const string& filename){
+    ifstream file(filename);
+    string line;
+
+    if (!file.is_open()) {
+        cerr << "无法打开文件: " << filename << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    int u = 0, v = 0;
+    while (file >> u >> v) {
+        int bigger = max(u,v);
+        if(bigger>nodeCount){
+            nodeCount = bigger;
+        }
+    }
+}
 // CSR数据结构
 struct CSR {
     //uint32_t
@@ -22,7 +57,7 @@ struct CSR {
 vector<vector<int>> readEdgesFromFile(const string& filename) {
     //第二个vector要排序，还要去重。
 //    unordered_map<int, vector<int>> adjList(548411);
-    vector<vector<int>>adjList(548411);
+    vector<vector<int>>adjList(nodeCount);
     ifstream file(filename);
     string line;
 
@@ -36,7 +71,10 @@ vector<vector<int>> readEdgesFromFile(const string& filename) {
         adjList[u].push_back(v);
         adjList[v].push_back(u);
     }
-
+    for(auto& vec:adjList){
+        sort(vec.begin(),vec.end());
+        vec.erase(unique(vec.begin(),vec.end()),vec.end());
+    }
     file.close();
     cout<<adjList.size()<<endl;
 
@@ -46,13 +84,13 @@ vector<vector<int>> readEdgesFromFile(const string& filename) {
 
 // 将邻接表转换为CSR格式
 //find部分也要改。
-CSR convertToCSR(const vector<vector<int>>& adjList, int nodeCount) {
+CSR convertToCSR(const vector<vector<int>>& adjList) {
     CSR csr;
     csr.rowPointers.push_back(0); // 第一个元素永远是0
 
     for (int i = 0; i < nodeCount; ++i) {
 //        if (adjList.find(i) != adjList.end()) {
-        if(adjList[i].size()!=0){
+        if(!adjList[i].empty()){
             for (int neighbor : adjList.at(i)) {
                 csr.colIndices.push_back(neighbor);
             }
@@ -117,7 +155,7 @@ void output(int v0, int v1, int v2, int v3, set<tuple<int, int, int, int>>& uniq
 
 // 查找所有与查询图同构的子图
 void findIsomorphicSubgraphs(const CSR& csr) {
-    int nodeCount = csr.rowPointers.size() - 1;  // 节点数
+//    int nodeCount = csr.rowPointers.size() - 1;  // 节点数
     vector<unordered_set<int>> C(4); // 存储候选节点集
     set<tuple<int, int, int, int>> uniqueSubgraphs;  // 存储已经输出的子图
 
@@ -164,19 +202,20 @@ void findIsomorphicSubgraphs(const CSR& csr) {
 //    }
 //}
 int main() {
-    string filename = "/Users/xunuo/Downloads/amazon.txt";
-
+    Timer t;
+    string filename = "C:\\CLionProject\\GraphMatching\\cmake-build-debug\\amazon.txt";
+    updateNodeCount(filename);
     // 从文件中读取边列表并转换为邻接表
     vector<vector<int>> adjList = readEdgesFromFile(filename);
 
     // 假设节点编号是连续的，从0开始
-    int nodeCount = adjList.size();
+//    int nodeCount = adjList.size();
 
     // 转换为CSR格式
-    CSR csr = convertToCSR(adjList, nodeCount);
+    CSR csr = convertToCSR(adjList);
 
     // 输出CSR格式
-    printCSR(csr);
+//    printCSR(csr);
 
 //    CSR csr = {
 //            // colIndices数组，存储所有边的目标节点
