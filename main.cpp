@@ -8,8 +8,14 @@
 #include <fstream>
 #include <unordered_map>
 #include <chrono>
+#include <omp.h>
+#include <numeric>
+
 using namespace std;
+
 int nodeCount = 0;
+//size_t totalCount = 0;
+vector<size_t> totalCount(64,0);
 
 class Timer {
 public:
@@ -77,7 +83,7 @@ vector<vector<int>> readEdgesFromFile(const string& filename) {
         vec.erase(unique(vec.begin(),vec.end()),vec.end());
     }
     file.close();
-    cout<<adjList.size()<<endl;
+//    cout<<adjList.size()<<endl;
 
     return adjList;
 
@@ -173,29 +179,38 @@ void output(int v0, int v1, int v2, int v3, set<tuple<int, int, int, int>>& uniq
 }
 
 // 查找所有与查询图同构的子图
+//intersec数组的声明放到循环外面.
 void findIsomorphicSubgraphs(const CSR& csr) {
 //    int nodeCount = csr.rowPointers.size() - 1;  // 节点数
 //    vector<unordered_set<int>> C(4); // 存储候选节点集
     set<tuple<int, int, int, int>> uniqueSubgraphs;  // 存储已经输出的子图
 
+
+    vector<vector<int>> C2(64,vector<int>(40960,0));
+    vector<vector<int>> C3(64,vector<int>(40960,0));
     // C[0] = 所有节点
+    #pragma omp parallel for schedule(dynamic, 8) num_threads(64)
     for (int v0 = 0; v0 < nodeCount; ++v0) {
+        int tid0 = omp_get_thread_num();
         // C[1] = N(v0)
 //        C[1] = getNeighbors(csr, v0);
         auto [neighbors_ptr_c0, size_c0] = getNeighbors(csr, v0);
         for (int i = 0; i<size_c0; i++) {
             // C[2] = N(v0) ∩ N(v1)
-            auto [neighbors_ptr_c1, size_c1] = getNeighbors(csr, neighbors_ptr_c0[i]);
-            auto C2 = intersect(neighbors_ptr_c0,neighbors_ptr_c0+size_c0*sizeof(int),neighbors_ptr_c1,neighbors_ptr_c1+size_c1*sizeof(int));
-            for (int v2 : C2) {
+            auto [neighbors_ptr_c1, size_c1] = getNeighbors(csr, neighbors_ptr_c0[i]);  //把地址变量在循环外存储，然后在getNeighbors里面修改地址变量的内容
+            C2[tid0] = intersect(neighbors_ptr_c0,neighbors_ptr_c0+size_c0*sizeof(int),neighbors_ptr_c1,neighbors_ptr_c1+size_c1*sizeof(int));
+            for (int v2 : C2[tid0]) {
                 // C[3] = N(v1) ∩ N(v2) − {v0}
 //                auto [neighbors_ptr_c2, size_c2] = getNeighbors(csr, neighbors_ptr_c1[i]);
                 auto [neighbors_ptr_c2, size_c2] = getNeighbors(csr, v2);
-                auto C3 = intersect(neighbors_ptr_c1,neighbors_ptr_c1+size_c1*sizeof(int), neighbors_ptr_c2,neighbors_ptr_c2+size_c2*sizeof(int));
+                C3[tid0] = intersect(neighbors_ptr_c1,neighbors_ptr_c1+size_c1*sizeof(int), neighbors_ptr_c2,neighbors_ptr_c2+size_c2*sizeof(int));
 //                C3.erase(v0);
-                C3.erase(remove(C3.begin(), C3.end(), v0), C3.end());
-                for (int v3 : C3) {
-                    output(v0, neighbors_ptr_c0[i], v2, v3, uniqueSubgraphs);
+//                C3.erase(remove(C3.begin(), C3.end(), v0), C3.end());
+                for (int v3 : C3[tid0]) {
+                    if(v3==v0)
+                        continue;
+//                    output(v0, neighbors_ptr_c0[i], v2, v3, uniqueSubgraphs);
+                    totalCount[tid0]++;
                 }
             }
         }
@@ -249,6 +264,8 @@ int main() {
 //    };
 
     findIsomorphicSubgraphs(csr);
+    size_t total = accumulate(totalCount.begin(),totalCount.end(),0);
+    cout << total<<endl;
 
     return 0;
 }
