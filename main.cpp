@@ -202,15 +202,21 @@ void findIsomorphicSubgraphs(const CSR& csr) {
             for (int v2 : C2[tid0]) {
                 // C[3] = N(v1) ∩ N(v2) − {v0}
 //                auto [neighbors_ptr_c2, size_c2] = getNeighbors(csr, neighbors_ptr_c1[i]);
+                int v1 = neighbors_ptr_c0[i];
+                if(v2>=v1)
+                    continue;
+
                 auto [neighbors_ptr_c2, size_c2] = getNeighbors(csr, v2);
                 C3[tid0] = intersect(neighbors_ptr_c1,neighbors_ptr_c1+size_c1*sizeof(int), neighbors_ptr_c2,neighbors_ptr_c2+size_c2*sizeof(int));
 //                C3.erase(v0);
 //                C3.erase(remove(C3.begin(), C3.end(), v0), C3.end());
                 for (int v3 : C3[tid0]) {
-                    if(v3==v0)
-                        continue;
+                    if(v3!=v0 && v3<v0)
+                        totalCount[tid0]++;
+
+
 //                    output(v0, neighbors_ptr_c0[i], v2, v3, uniqueSubgraphs);
-                    totalCount[tid0]++;
+
                 }
             }
         }
