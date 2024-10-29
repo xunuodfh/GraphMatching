@@ -190,16 +190,16 @@ void findIsomorphicSubgraphs(const CSR& csr) {
     vector<vector<int>> C3(64,vector<int>(40960,0));
     // C[0] = 所有节点
     #pragma omp parallel for schedule(dynamic, 8) num_threads(64)
-    for (int v0 = 0; v0 < nodeCount; ++v0) {
+    for (int v0 = 0; v0 < nodeCount; ++v0) {  //v0
         int tid0 = omp_get_thread_num();
         // C[1] = N(v0)
 //        C[1] = getNeighbors(csr, v0);
         auto [neighbors_ptr_c0, size_c0] = getNeighbors(csr, v0);
-        for (int i = 0; i<size_c0; i++) {
+        for (int i = 0; i<size_c0; i++) {  //v1
             // C[2] = N(v0) ∩ N(v1)
             auto [neighbors_ptr_c1, size_c1] = getNeighbors(csr, neighbors_ptr_c0[i]);  //把地址变量在循环外存储，然后在getNeighbors里面修改地址变量的内容
             C2[tid0] = intersect(neighbors_ptr_c0,neighbors_ptr_c0+size_c0*sizeof(int),neighbors_ptr_c1,neighbors_ptr_c1+size_c1*sizeof(int));
-            for (int v2 : C2[tid0]) {
+            for (int v2 : C2[tid0]) {   //v2
                 // C[3] = N(v1) ∩ N(v2) − {v0}
 //                auto [neighbors_ptr_c2, size_c2] = getNeighbors(csr, neighbors_ptr_c1[i]);
                 int v1 = neighbors_ptr_c0[i];
